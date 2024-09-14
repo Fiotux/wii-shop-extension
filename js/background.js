@@ -21,7 +21,7 @@ async function getShopList() {
     console.log('Loaded site list:', dataList)
     // Save data to storage
     globalSiteList = dataList
-    chrome.storage.local.set({
+    browser.storage.local.set({
         siteList: dataList
     })
 }
@@ -37,7 +37,7 @@ async function createMediaSession() {
         artist: '(Click ⏩ to open settings)'
     })
     navigator.mediaSession.setActionHandler('seekforward', function () {
-        chrome.runtime.openOptionsPage();
+        browser.runtime.openOptionsPage();
     })
 }
 
@@ -53,14 +53,14 @@ themeAudio.volume = 0
 themeAudio.loop = true
 
 // Get stored settings
-chrome.storage.sync.get({
+browser.storage.sync.get({
     music: 'wii-shop-theme',
     musicEnabled: true,
     volume: 0.5,
     excludedSites: '',
     includedSites: ''
 }, function (data) {
-    currentMusic = chrome.extension.getURL('music/' + data.music + '.ogg')
+    currentMusic = browser.runtime.getURL('music/' + data.music + '.m4a')
     console.log('Music enabled:', data.musicEnabled)
     musicEnabled = data.musicEnabled
     themeAudio.volume = data.volume
@@ -69,7 +69,7 @@ chrome.storage.sync.get({
 })
 
 // Get site list from local storage
-chrome.storage.local.get({
+browser.storage.local.get({
     siteList: []
 }, function (data) {
     if (data.siteList.length === 0) {
@@ -80,7 +80,7 @@ chrome.storage.local.get({
 })
 
 // Update settings after storage change
-chrome.storage.onChanged.addListener(function (changes, area) {
+browser.storage.onChanged.addListener(function (changes, area) {
     if (changes.volume) {
         themeAudio.volume = changes.volume.newValue
     }
@@ -89,13 +89,13 @@ chrome.storage.onChanged.addListener(function (changes, area) {
         if (!musicEnabled) {
             themeAudio.src = ''
         } else {
-            chrome.tabs.query({ active: true, lastFocusedWindow: true }, checkMusic);
+            browser.tabs.query({ active: true, lastFocusedWindow: true }, checkMusic);
         }
     }
     if (changes.music) {
-        currentMusic = chrome.extension.getURL('music/' + changes.music.newValue + '.ogg')
+        currentMusic = browser.extension.getURL('music/' + changes.music.newValue + '.m4a')
         if (musicEnabled) {
-            themeAudio.src = chrome.extension.getURL('music/' + changes.music.newValue + '.ogg')
+            themeAudio.src = browser.extension.getURL('music/' + changes.music.newValue + '.m4a')
             themeAudio.play()
         }
     }
@@ -140,23 +140,23 @@ function checkMusic(tabs) {
 }
 
 // Detect new page loads in active tab, if the domain matches a shopping site, play music
-chrome.tabs.onUpdated.addListener(function (tabId, changeInfo) {
+browser.tabs.onUpdated.addListener(function (tabId, changeInfo) {
     if (changeInfo.status === 'complete') {
-        chrome.tabs.query({ active: true, lastFocusedWindow: true }, function (tabs) {
+        browser.tabs.query({ active: true, lastFocusedWindow: true }, function (tabs) {
             checkMusic(tabs)
         })
     }
 })
 
 // Detect shopping tab becoming inactive/closed, if the domain matches a shopping site, play music
-chrome.tabs.onActivated.addListener(function (activeInfo) {
-    chrome.tabs.query({ active: true, lastFocusedWindow: true }, function (tabs) {
+browser.tabs.onActivated.addListener(function (activeInfo) {
+    browser.tabs.query({ active: true, lastFocusedWindow: true }, function (tabs) {
         checkMusic(tabs)
     })
 })
 
 // Listen for pause/play commands from popup
-chrome.runtime.onMessage.addListener(function (request) {
+browser.runtime.onMessage.addListener(function (request) {
     if (request === 'pause') {
         themeAudio.src = ''
     } else if (request === 'play') {
@@ -168,26 +168,26 @@ chrome.runtime.onMessage.addListener(function (request) {
 })
 
 // Update list of sites when the browser is restarted
-chrome.runtime.onStartup.addListener(function () {
+browser.runtime.onStartup.addListener(function () {
     getShopList()
 })
 
 // Show notification on extension install
-chrome.runtime.onInstalled.addListener(function () {
+browser.runtime.onInstalled.addListener(function () {
     // Set most options
     var data = {
         'type': 'basic',
         'message': 'The Wii Shop theme will now play when you visit shopping websites. Click the toolbar button to change settings, or click this notification.',
-        'iconUrl': chrome.extension.getURL('img/icon128.png'),
+        'iconUrl': browser.extension.getURL('img/icon128.png'),
         'title': 'Wii Shop Music extension installed!',
     }
     // Set message and handlers for notification
     data.message = 'The Wii Shop theme will now play when you visit shopping websites. Click the toolbar button to change settings, or click this notification.'
     handleNotif = function (id) {
-        chrome.notifications.onClicked.addListener(function (id) {
-            chrome.runtime.openOptionsPage();
+        browser.notifications.onClicked.addListener(function (id) {
+            browser.runtime.openOptionsPage();
         })
     }
     // Display the notification
-    chrome.notifications.create(data, handleNotif)
+    browser.notifications.create(data, handleNotif)
 })
